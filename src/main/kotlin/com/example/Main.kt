@@ -3,6 +3,7 @@ package com.example
 import org.apache.commons.compress.archivers.zip.*
 import java.io.File
 import java.util.*
+import kotlin.system.measureTimeMillis
 
 internal var allFilesPredicate: ZipArchiveEntryPredicate = ZipArchiveEntryPredicate { true }
 
@@ -15,64 +16,76 @@ fun main(args: Array<String>) {
     rezip3(kobalt, src, zip)
 }
 
+// Straight raw copy, not very flexible
 fun rezip(jarIn: File, zipOut: File) {
-    val s = System.currentTimeMillis()
-    val zos = ZipArchiveOutputStream(zipOut)
-    zos.encoding = "UTF-8"
-    val zip = ZipFile(jarIn)
-    zip.copyRawEntries(zos, allFilesPredicate)
-    zos.close()
-    zip.close()
+    val time = measureTimeMillis {
+        val zos = ZipArchiveOutputStream(zipOut)
+        zos.encoding = "UTF-8"
+        val zip = ZipFile(jarIn)
 
-    println("Rezip Time: " + (System.currentTimeMillis() - s) + "ms")
+        zip.copyRawEntries(zos, allFilesPredicate)
+
+        zos.close()
+        zip.close()
+    }
+
+    println("Rezip Time: $time ms")
 }
 
+// Raw copy: jar -> zip
 fun rezip2(jarIn: File, zipOut: File) {
-    val s = System.currentTimeMillis()
-    val zos = ZipArchiveOutputStream(zipOut)
-    zos.encoding = "UTF-8"
-    val zip = ZipFile(jarIn)
+    val time = measureTimeMillis {
+        val zos = ZipArchiveOutputStream(zipOut)
+        zos.encoding = "UTF-8"
+        val zip = ZipFile(jarIn)
 
-    for (entry in zip.entries) {
-        zos.addRawArchiveEntry(entry, zip.getRawInputStream(entry))
-    }
-
-    zos.close()
-
-    zip.close()
-
-    println("Rezip2 Time: " + (System.currentTimeMillis() - s) + "ms")
-}
-
-fun rezip3(jarIn: File, srcJar: File, zipOut: File) {
-    val s = System.currentTimeMillis()
-    val zos = ZipArchiveOutputStream(zipOut)
-    zos.encoding = "UTF-8"
-    val jar = ZipFile(jarIn)
-    
-    val jarEntries = jar.entries
-
-    for (entry in jar.entries) {
-        zos.addRawArchiveEntry(entry, jar.getRawInputStream(entry))
-    }
-
-    jar.close()
-
-    val src = ZipFile(srcJar)
-
-    for (entry in src.entries) {
-        if (!entryExists(jarEntries, entry)) {
-            zos.addRawArchiveEntry(entry, src.getRawInputStream(entry))
+        for (entry in zip.entries) {
+            zos.addRawArchiveEntry(entry, zip.getRawInputStream(entry))
         }
+
+        zos.close()
+
+        zip.close()
     }
 
-    src.close()
-
-    zos.close()
-
-    println("Rezip3 Time: " + (System.currentTimeMillis() - s) + "ms")
+    println("Rezip2 Time: $time ms")
 }
 
+// Raw copy: jar x 2 -> zip
+fun rezip3(jarIn: File, srcJar: File, zipOut: File) {
+    val time = measureTimeMillis {
+        val zos = ZipArchiveOutputStream(zipOut)
+        zos.encoding = "UTF-8"
+        val jar = ZipFile(jarIn)
+
+        // get the jar entries
+        val jarEntries = jar.entries
+
+        // copy the entries
+        for (entry in jar.entries) {
+            zos.addRawArchiveEntry(entry, jar.getRawInputStream(entry))
+        }
+
+        jar.close()
+
+        // get the src jar entries
+        val src = ZipFile(srcJar)
+
+        // copy the entries, no dups
+        for (entry in src.entries) {
+            if (!entryExists(jarEntries, entry)) {
+                zos.addRawArchiveEntry(entry, src.getRawInputStream(entry))
+            }
+        }
+
+        src.close()
+        zos.close()
+    }
+
+    println("Rezip3 Time: $time ms")
+}
+
+// Look for duplicate entries
 fun entryExists(jarEntries: Enumeration<ZipArchiveEntry>, entry: ZipArchiveEntry): Boolean {
     for (e in jarEntries) {
         if (e.name == entry.name) {
