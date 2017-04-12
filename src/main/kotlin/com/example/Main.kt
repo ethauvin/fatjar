@@ -2,6 +2,7 @@ package com.example
 
 import org.apache.commons.compress.archivers.zip.*
 import java.io.File
+import java.nio.file.Files
 import java.util.*
 import kotlin.system.measureTimeMillis
 
@@ -13,12 +14,12 @@ fun main(args: Array<String>) {
     val zip = File("kobalt-1.0.58.zip")
     val src = File("kobalt-1.0.58-sources.jar")
 
-    //rezip2(kobalt, zip)
-    rezip3(kobalt, src, zip)
+    //reZip2(kobalt, zip)
+    reZip3(kobalt, src, zip)
 }
 
 // Straight raw copy, not very flexible
-fun rezip(jarIn: File, zipOut: File) {
+fun reZip(jarIn: File, zipOut: File) {
     val time = measureTimeMillis {
         val zos = ZipArchiveOutputStream(zipOut).apply { encoding = "UTF-8" }
         val zip = ZipFile(jarIn)
@@ -29,11 +30,11 @@ fun rezip(jarIn: File, zipOut: File) {
         zip.close()
     }
 
-    println("Rezip Time: $time ms")
+    println("ReZip Time: $time ms")
 }
 
 // Raw copy: jar -> zip
-fun rezip2(jarIn: File, zipOut: File) {
+fun reZip2(jarIn: File, zipOut: File) {
     val time = measureTimeMillis {
         val zos = ZipArchiveOutputStream(zipOut).apply { encoding = "UTF-8" }
         val zip = ZipFile(jarIn)
@@ -43,15 +44,14 @@ fun rezip2(jarIn: File, zipOut: File) {
         }
 
         zos.close()
-
         zip.close()
     }
 
-    println("Rezip2 Time: $time ms")
+    println("ReZip-2 Time: $time ms")
 }
 
 // Raw copy: jar x 2 -> zip
-fun rezip3(jarIn: File, srcJar: File, zipOut: File) {
+fun reZip3(jarIn: File, srcJar: File, zipOut: File) {
     val time = measureTimeMillis {
         val zos = ZipArchiveOutputStream(zipOut).apply { encoding = "UTF-8" }
         val jar = ZipFile(jarIn)
@@ -78,12 +78,10 @@ fun rezip3(jarIn: File, srcJar: File, zipOut: File) {
             }
         }
 
-        val tmp = File.createTempFile(MANIFEST, ".tmp")
-        tmp.bufferedWriter().use { out ->
-            out.write("Manifest-Version: 1.0\r\nMain-Class: com.beust.kobalt.MainKt\r\n")
-        }
+        val tmp = Files.createTempFile(MANIFEST, ".tmp").toFile()
+        tmp.writeText("Manifest-Version: 1.0\r\nMain-Class: com.beust.kobalt.MainKt\r\n")
 
-        val entry = ZipArchiveEntry(tmp, "META-INF/$MANIFEST")
+        val entry = zos.createArchiveEntry(tmp, "META-INF/$MANIFEST")
         zos.putArchiveEntry(entry)
         tmp.inputStream().use { ins ->
             ins.copyTo(zos, 50 * 1024)
@@ -94,7 +92,7 @@ fun rezip3(jarIn: File, srcJar: File, zipOut: File) {
         zos.close()
     }
 
-    println("Rezip3 Time: $time ms")
+    println("ReZip-3 Time: $time ms")
 }
 
 // Look for duplicate entries
