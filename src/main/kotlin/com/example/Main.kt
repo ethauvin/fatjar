@@ -1,6 +1,7 @@
 package com.example
 
 import org.apache.commons.compress.archivers.zip.*
+import org.apache.commons.compress.utils.IOUtils
 import java.io.File
 import java.nio.file.Files
 import java.util.*
@@ -79,13 +80,11 @@ fun reZip3(jarIn: File, srcJar: File, zipOut: File) {
         }
 
         val tmp = Files.createTempFile(MANIFEST, ".tmp").toFile()
-        tmp.writeText("Manifest-Version: 1.0\r\nMain-Class: com.beust.kobalt.MainKt\r\n")
+        tmp.writeText("Manifest-Version: 1.0\r\nCreated-By: ReZip3\r\nMain-Class: com.beust.kobalt.MainKt\r\n")
 
         val entry = zos.createArchiveEntry(tmp, "META-INF/$MANIFEST")
         zos.putArchiveEntry(entry)
-        tmp.inputStream().use { ins ->
-            ins.copyTo(zos, 50 * 1024)
-        }
+        IOUtils.copy(tmp.inputStream(), zos)
         zos.closeArchiveEntry()
 
         src.close()
