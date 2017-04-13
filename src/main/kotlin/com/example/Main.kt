@@ -82,16 +82,25 @@ fun reZip3(jarIn: File, srcJar: File, zipOut: File) {
         val tmp = Files.createTempFile(MANIFEST, ".tmp").toFile()
         tmp.writeText("Manifest-Version: 1.0\r\nCreated-By: ReZip3\r\nMain-Class: com.beust.kobalt.MainKt\r\n")
 
-        val entry = zos.createArchiveEntry(tmp, "META-INF/$MANIFEST")
-        zos.putArchiveEntry(entry)
-        IOUtils.copy(tmp.inputStream(), zos)
-        zos.closeArchiveEntry()
+        addEntry(zos, tmp, "META-INF/$MANIFEST")
+
+        val kobaltw = File(System.getProperty("user.home") + "/.kobalt/wrapper/dist/kobalt-1.0.60/bin/kobaltw")
+
+        addEntry(zos, kobaltw, "bin/${kobaltw.name}")
 
         src.close()
         zos.close()
     }
 
     println("ReZip-3 Time: $time ms")
+}
+
+// Add an archive entry
+fun addEntry(zos: ZipArchiveOutputStream, file: File, path: String) {
+    val entry = zos.createArchiveEntry(file, path)
+    zos.putArchiveEntry(entry)
+    IOUtils.copy(file.inputStream(), zos)
+    zos.closeArchiveEntry()
 }
 
 // Look for duplicate entries
